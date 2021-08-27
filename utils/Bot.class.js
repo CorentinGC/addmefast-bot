@@ -70,14 +70,30 @@ class Bot {
             // this.mainTab = page.mainFrame()._id
             page.setDefaultTimeout(5000)
             
+            const debugMode = opts[0].debug
             // Script
-            if(!this.loginMode) {
-                await this.signInAddMeFast(page)
-                await this.loop(page, browser)
-            } else {
-                await this.authSocials(page, opts)
+            let mode = 'none'
+            switch(true){
+                case !this.loginMode && !debugMode:
+                    mode = 'AddMeFast Bot'
+                    this._log('Mode: '+mode)
+                    await this.signInAddMeFast(page)
+                    await this.loop(page, browser)
+                break
+
+                case this.loginMode:
+                    mode = 'Auth Socials'
+                    this._log('Mode: '+ mode)
+                    await this.authSocials(page, opts)
+                break
+
+                case debugMode:
+                    mode = 'Debug'
+                    this._log('Mode: '+ mode)
+                    await this.debugMode(page, opts)
+                break
             }
-        
+
         })
         .catch(e => {
             this._log('Browser has been closed or crashed :/')
@@ -103,30 +119,50 @@ class Bot {
 
     }
     isActionEmpty = async (page) => {
-        const POINTS = /You will get ([0-9]+) points/i
+        const POINTS = /get ([0-9]+) points/i
 
-        const element = await page.waitForSelector('.fs18')
-        const value = await page.evaluate(el => el.textContent, element)
-        const state = value.match(POINTS)
+        try {
+            const element = await page.waitForSelector('.likedPagesSingle > center > b')
+            const value = await page.evaluate(el => el.textContent, element)
+            const state = value.match(POINTS)
+    
+            return state === null
+        } catch (e) {
+            return true
+        }
 
-        return state === null
     }
-    clickAMFBtn = async (page) => {
+    clickAMFBtn = async (page, browser) => {
         this._log('Clicking AMF button')
+        try {
+            await page.waitForSelector("a.single_like_button.btn3-wrap")
+            await page.click('a.single_like_button.btn3-wrap')
+        } catch (e){
+            console.log('AMF button not found')
+            // return this.loop(page, browser)
+        }
 
-        await page.waitForSelector("a.single_like_button.btn3-wrap")
-        await page.click('a.single_like_button.btn3-wrap')
     }
     getPopup = async (browser) => {
-        const pages = await browser.pages()
-        const popup = pages[pages.length - 1]
-        popup.setDefaultTimeout(5000)
-
-        return popup
+        try {
+            const pages = await browser.pages()
+            const popup = pages[pages.length - 1]
+            popup.setDefaultTimeout(5000)
+    
+            return popup
+        } catch (e){
+            this._log('Error: no popup found')
+        }
+  
     }
     closePopup = async (popup) => {
-        await popup.close()
-        this._log('Popup closed')
+        try {
+            await popup.close()
+            this._log('Popup closed')
+        } catch(e){
+            this._log('Error closing popup !')
+        }
+
     } 
     loop = async (page, browser) => {
         this._log('Starting loop & go to action page')
@@ -144,16 +180,9 @@ class Bot {
             this.start()
         }
 
-
         // Check antibot
-        // await popup.waitForSelector('input.reload-button')
-        try {
-            //document.querySelector('[name="reload"]').click()
-            await page.evaluate(() =>  document.querySelector('.reload-button').click())
-        } catch(e){
-            this._log('No antibot detected')
-        }
-        
+        this.checkReloadBtn()
+    
 
         this._log('Checking if there is work')
 
@@ -167,34 +196,50 @@ class Bot {
         }
 
         
-        await this.clickAMFBtn(page)
+        await this.clickAMFBtn(page, browser)
         this._log('Waiting 10s for popup loading')
         await page.waitForTimeout(10000)
 
         const popup = await this.getPopup(browser)
+        this.checkReloadBtn()
 
         try {
-            await newStrat.callback(popup, this)
+            await newStrat.callback(popup, this, page)
         } catch(e){
-            this._log('Button not found :/')
-            console.log(e)
+            this._log('Error while executing callback.')
         }    
 
         this._log('Callback executed, waiting 10s before closing popup')
         await page.waitForTimeout(10000)
 
         await this.closePopup(popup)
+        this.checkReloadBtn()
 
         if(newStrat?.opts?.confirm_after_close === true){
-            this.clickAMFBtn(page)
+            this.clickAMFBtn(page, browser)
+            this.checkReloadBtn()
         }
 
-        await this.addPoints(page, browser, this.loop)
-        
+        // await this.addPoints(page)
+
         this._log('Loop ended, waiting 5sec')
         await page.waitForTimeout(5000)
 
         this.loop(page, browser)
+    }
+    checkReloadBtn = async (page) => {
+        try {
+            await page.evaluate(() => {
+                const ELEMENT = 'input[name="reload"]'
+                const btn = document.querySelector(ELEMENT)
+                if(btn) {
+                    btn.click()
+                    this._log('Reload Btn clicked !')
+                }
+            })
+        } catch(e){
+            this._log('No antibot detected')
+        }
     }
     addPoints = async (page) => {
         page.setDefaultTimeout(10000)
@@ -247,6 +292,27 @@ class Bot {
                 console.log('inputs not found, probably already logged')
             }
         }
+    }
+    debugMode = async (page, opts) => {
+        await page.goto('https://www.youtube.com/watch?v=WGIJLXUKI5U', {
+            ignoreDefaultArgs: ['--no-sandbox'],
+            waitUntil: 'networkidle2',
+        })
+        await page.waitForTimeout(2500)
+
+
+        // let select = await page.waitForSelector(ELEMENT)
+        await page.evaluate(() => {
+            const ELEMENT = "ytd-toggle-button-renderer.style-scope.ytd-menu-renderer.force-icon-button.style-text button#button > yt-icon" // Like video
+
+            document.querySelectorAll(ELEMENT)[2].click()
+        })
+    
+        // Auth ADDMEFAST
+        // await page.type('.email', this.AMF_EMAIL, {delay: 50})
+        // await page.type('.password', this.AMF_PASSWORD, {delay: 50})
+        // await page.waitForTimeout(250)
+        // await page.click('[name="login_button"]')
     }
     waitAndClick = async (selector, page) => {
         await page.evaluate((selector) => document.querySelector(selector).click(), selector);

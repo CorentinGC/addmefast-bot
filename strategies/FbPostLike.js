@@ -22,6 +22,7 @@ const FbPostLike = async (popup) => {
             const ELEMENT = '.w0hvl6rk > .d2edcug0 '
             // await bot.waitAndClick(ELEMENT, popup)
             await popup.waitForSelector(ELEMENT, {timeout: 5000})
+            
         }
 
     }

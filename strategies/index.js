@@ -4,6 +4,7 @@ const RedditUpvote = require('./RedditUpvote')
 const ScFollow = require('./ScFollow')
 const ScLikes = require('./ScLikes')
 const YtLikes = require('./YtLikes')
+const YtViews = require('./YtViews')
 
 
 module.exports = {
@@ -12,5 +13,6 @@ module.exports = {
     RedditUpvote,
     ScFollow,
     ScLikes,
-    YtLikes
+    YtLikes,
+    YtViews
 }

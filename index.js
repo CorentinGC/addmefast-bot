@@ -11,7 +11,9 @@ const opts = {
         'FbLikePage', 
         'ScLikes', 
         'ScFollow', 
-        // 'YtLikes'
+        'YtLikes',
+        'YtViews'
+
     ]
 
     // onlyStrat: ['ScLikes'],
@@ -22,7 +24,7 @@ const bot = new Bot(opts)
 
 const startBot = () => {
     try {
-        bot.start()
+        bot.start({debug:false})
     } catch(e){
         console.log('ERREUR: ', e)
         // startBot()
