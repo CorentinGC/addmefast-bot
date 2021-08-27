@@ -1,0 +1,3 @@
+# AddMeFast Bot
+
+### Strategies

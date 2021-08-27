@@ -1,0 +1,16 @@
+{
+  "name": "addmefast",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^9.1.1",
+    "puppeteer-extra": "^3.1.18",
+    "puppeteer-extra-plugin-adblocker": "^2.11.11",
+    "puppeteer-extra-plugin-stealth": "^2.7.8"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "auth": "node login.js"
+  }
+}
