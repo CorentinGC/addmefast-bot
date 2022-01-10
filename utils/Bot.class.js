@@ -10,6 +10,7 @@ const Strategies = require('../strategies')
 class Bot {
     constructor(OPTS=null){
         this.loginMode = OPTS?.loginMode || false
+        this.started = false
 
         if(!this.loginMode){
             if(!OPTS?.AMF_EMAIL || !OPTS?.AMF_PASSWORD) throw new Error('You should set your AddMeFast credentials first')
@@ -58,12 +59,19 @@ class Bot {
         return newStrat
 
     }
-    start = (...opts) => {
-        this.puppeteer.launch({ 
-            userDataDir: "./addmefast",
-            headless: false 
-        })
-        .then(async (browser) => {
+    start = async (...opts) => {
+        this.started = true
+        try { 
+            let browser = await this.puppeteer.launch({ 
+                userDataDir: "./addmefast",
+                headless: false 
+            })
+            browser.on('disconnected', () => {
+                this._log('Browser has disconnected.')
+                this.started = false
+                // this.start(opts)
+            })
+            
             const [page] = await browser.pages()
             await page.setViewport({ width: 1024, height: 768 })
 
@@ -73,6 +81,12 @@ class Bot {
             const debugMode = opts[0].debug
             // Script
             let mode = 'none'
+            
+            setInterval(() => {
+                this._log('Check antibot...')
+                this.checkReloadBtn()
+            }, 10000)
+
             switch(true){
                 case !this.loginMode && !debugMode:
                     mode = 'AddMeFast Bot'
@@ -93,12 +107,11 @@ class Bot {
                     await this.debugMode(page, opts)
                 break
             }
+        } catch(e) {
+            this._log('Browser has crashed :/')
+        }    
+        
 
-        })
-        .catch(e => {
-            this._log('Browser has been closed or crashed :/')
-            console.log(e)
-        })          
     }
     signInAddMeFast = async (page) => {
         this._log('GoTo Addmefast website')
@@ -138,7 +151,7 @@ class Bot {
             await page.waitForSelector("a.single_like_button.btn3-wrap")
             await page.click('a.single_like_button.btn3-wrap')
         } catch (e){
-            console.log('AMF button not found')
+            this._log('AMF button not found')
             // return this.loop(page, browser)
         }
 
@@ -164,7 +177,7 @@ class Bot {
         }
 
     } 
-    loop = async (page, browser) => {
+    loop = async (page, browser, retry=0) => {
         this._log('Starting loop & go to action page')
 
         const newStratKey = this.randStrategy()
@@ -176,13 +189,9 @@ class Bot {
                 waitUntil: 'networkidle2'
             })
         } catch {
-            await browser.close()
-            this.start()
+            this._log('Error while loading strategy AMF page')
+            this.started = false
         }
-
-        // Check antibot
-        this.checkReloadBtn()
-    
 
         this._log('Checking if there is work')
 
@@ -190,7 +199,8 @@ class Bot {
 
         if(isEmpty) {
             this._log('No more points for this action :/')
-            return this.loop(page, browser)
+            let newRetry = retry + 1
+            return newRetry <= 3 && this.loop(page, browser, newRetry)
         } else {
             this._log('Work found, starting loop')
         }
@@ -201,7 +211,6 @@ class Bot {
         await page.waitForTimeout(10000)
 
         const popup = await this.getPopup(browser)
-        this.checkReloadBtn()
 
         try {
             await newStrat.callback(popup, this, page)
@@ -213,11 +222,10 @@ class Bot {
         await page.waitForTimeout(10000)
 
         await this.closePopup(popup)
-        this.checkReloadBtn()
 
         if(newStrat?.opts?.confirm_after_close === true){
             this.clickAMFBtn(page, browser)
-            this.checkReloadBtn()
+
         }
 
         // await this.addPoints(page)
@@ -284,12 +292,12 @@ class Bot {
 
                 try {
                     await page.waitForSelector("#ssrb_top_nav_start")
-                    console.log('selector found ! you are logged !')
+                    this._log('selector found ! you are logged !')
                 } catch (e) {
-                    console.log('error while logging', e)
+                    this._log('error while logging', e)
                 }
             } catch (e){
-                console.log('inputs not found, probably already logged')
+                this._log('inputs not found, probably already logged')
             }
         }
     }
