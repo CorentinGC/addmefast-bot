@@ -1,7 +1,7 @@
 const YtLikes = async (popup, bot) => {
     await popup.evaluate(() => {
         const ELEMENT = "ytd-toggle-button-renderer.style-scope.ytd-menu-renderer.force-icon-button.style-text button#button > yt-icon"
-        document.querySelectorAll(ELEMENT)[2].click()
+        document.querySelector(ELEMENT).click()
     })
 
 }
