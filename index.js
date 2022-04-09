@@ -1,36 +1,22 @@
-
-
-const CREDENTIALS = require('./credentials').amf
+require('dotenv').config()
 
 const Bot = require('./utils/Bot.class')
 const opts = {
-    AMF_EMAIL: CREDENTIALS.email,
-    AMF_PASSWORD: CREDENTIALS.password,
-    onlyStrat: [
-        'FbPostLike', 
-        'FbLikePage', 
-        'ScLikes', 
-        'ScFollow', 
-        'YtLikes',
-        'YtViews'
-
-    ]
-
+    AMF_EMAIL: process.env.AMF_EMAIL,
+    AMF_PASSWORD: process.env.AMF_PASSWORD,
+    onlyStrat: JSON.parse(process.env.ONLY_STRATEGIES)
     // onlyStrat: ['ScLikes'],
     // disabledStrat: ['ScLikes']
 }
 const bot = new Bot(opts)
-
 
 const startBot = () => {
     try {
         bot.start({debug:false})
     } catch(e){
         console.log('ERREUR: ', e)
-        // startBot()
     }
     
 }
 
 startBot()
-// console.log(bot.randStrategy())
