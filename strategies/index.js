@@ -5,6 +5,7 @@ const ScFollow = require('./ScFollow')
 const ScLikes = require('./ScLikes')
 const YtLikes = require('./YtLikes')
 const YtViews = require('./YtViews')
+const CmcWatchlist = require('./CmcWatchlist')
 
 
 module.exports = {
@@ -14,5 +15,6 @@ module.exports = {
     ScFollow,
     ScLikes,
     YtLikes,
-    YtViews
+    YtViews,
+    CmcWatchlist
 }
