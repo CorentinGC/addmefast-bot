@@ -1,9 +1,7 @@
-
-
-
 const puppeteer = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
+const tor_control = require('tor-control-promise')
 
 // TODO: Actually detected as bot once user-agent changed
 // const UserAgent = require("user-agents")
@@ -42,6 +40,19 @@ class Bot {
         this.puppeteer.use(StealthPlugin())
         this.puppeteer.use(AdblockerPlugin({ blockTrackers: true }))
 
+
+        this.setupTor()
+    }
+    setupTor = async () => {
+        if(String(process.env?.PROXY_TOR) === "true") {
+            this.tor = new tor_control({
+                host: process.env.PROXY_HOST,
+                port: process.env.PROXY_PORT,
+                password: process.env.TOR_PASSWORD,
+            })
+            
+            await this.tor.connect()
+        }
     }
     getStrategy = () => {
         let arrStrategies = []
@@ -78,19 +89,12 @@ class Bot {
                 dumpio: false
             }
             if(this.incognito) opts.args.push("--incognito")
-            if(this.proxy) opts.args.push(`--proxy-server=${this.proxy}`)
+            if(this.proxy) opts.args.push(`--proxy-server="${this.proxy}"`)
 
             // If it's Tor node, renew IP
             if(String(process.env?.PROXY_TOR) === "true") {
-                const tor_control = require('tor-control-promise');
-                const tor = new tor_control({
-                    host: process.env.PROXY_HOST,
-                    port: process.env.PROXY_PORT,
-                    password: process.env.TOR_PASSWORD,
-                });
-
-                await tor.connect()
-                await tor.signalNewnym()
+                await this.tor.signalNewnym()
+                console.log('renewed')
             }
     
             const browser = await this.puppeteer.launch(opts)
@@ -160,7 +164,7 @@ class Bot {
             waitUntil: 'networkidle2',
         })
         
-        this._log('Wait 20sec for cloudflare & complete loading')
+        this._log('Wait 20sec for cloudflare')
         await page.waitForTimeout(20_000) //cloudflare
 
         // Auth AddMeFast
@@ -183,7 +187,7 @@ class Bot {
             await page.waitForSelector("a[href*='/login/logout']")
         } catch (err) {
             this._log("Error, not logged")
-            return this.signInAddMeFast()
+            return this.signInAddMeFast(page)
         }
     }
     isActionEmpty = async (page) => {
