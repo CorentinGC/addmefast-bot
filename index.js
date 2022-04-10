@@ -4,7 +4,7 @@ const Bot = require('./utils/Bot.class')
 const opts = {
     AMF_EMAIL: process.env.AMF_EMAIL,
     AMF_PASSWORD: process.env.AMF_PASSWORD,
-    onlyStrat: JSON.parse(process.env.ONLY_STRATEGIES)
+    mode: "bot"
     // onlyStrat: ['ScLikes'],
     // disabledStrat: ['ScLikes']
 }

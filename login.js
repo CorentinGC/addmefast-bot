@@ -1,19 +1,17 @@
-const CREDENTIALS = require('./credentials').socials
+require('dotenv').config()
 
 const Bot = require('./utils/Bot.class')
 
 const opts = {
-    loginMode: true,
-    // onlyStrat: ['ScLikes'],
-    // disabledStrat: ['ScLikes']
+    mode: "auth",
+    incognito: false
 }
 
-console.log(CREDENTIALS)
 const bot = new Bot(opts)
 
 const startBot = () => {
     try {
-        bot.start('facebook', CREDENTIALS)
+        bot.start()
     } catch(e){
         console.log('ERREUR: ', e)
         // startBot()

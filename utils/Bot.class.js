@@ -5,19 +5,28 @@ const puppeteer = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
 
+// const UserAgent = require("user-agents")
+// const {userAgent} = new UserAgent({deviceCategory: 'desktop'});
+
+// const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36';
+
+// const UA = USER_AGENT;
+
 const Strategies = require('../strategies')
 
 class Bot {
     constructor(OPTS=null){
-        this.loginMode = OPTS?.loginMode || false
+        this.mode = OPTS?.mode || 'auth'
         this.started = false
+        this.incognito = OPTS?.incognito || false
+        this.idle = false
 
-        if(!this.loginMode){
+        if(this.mode === "bot"){
             if(!OPTS?.AMF_EMAIL || !OPTS?.AMF_PASSWORD) throw new Error('You should set your AddMeFast credentials first')
             this.AMF_EMAIL = OPTS.AMF_EMAIL
             this.AMF_PASSWORD = OPTS.AMF_PASSWORD
     
-            this.onlyStrat = OPTS?.onlyStrat || null
+            this.onlyStrat = JSON.parse(process.env.ONLY_STRATEGIES) || null
             this.disabledStrat = OPTS?.disabledStrat || null
     
             if(this.onlyStrat && this.disabledStrat){
@@ -25,8 +34,7 @@ class Bot {
                     if(this.disabledStrat.includes(e)) throw new Error('You  have a disabledStrat element which is also present in onlyStrat opt')
                 })
             }
-
-                        
+   
             this.totalPts = 0
             // this.mainTab = null
             this.currentStrategy = null
@@ -61,54 +69,80 @@ class Bot {
     }
     start = async (...opts) => {
         this.started = true
+        this.idle = new Date()
         try { 
-            let browser = await this.puppeteer.launch({ 
+            let args = { 
                 userDataDir: "./addmefast",
-                headless: false 
-            })
-            browser.on('disconnected', () => {
+                headless: false,
+                args: [
+                    '--enable-features=NetworkService', 
+                    '--no-sandbox', 
+                    '--disable-setuid-sandbox', 
+                    '--disable-dev-shm-usage',
+                    '--flag-switches-begin',
+                    '--disable-site-isolation-trials',
+                    '--flag-switches-end'
+                ],
+                ignoreHTTPSErrors: true, 
+                dumpio: false
+            }
+            if(this.incognito) args.args.push("--incognito")
+            let browser = await this.puppeteer.launch(args)
+
+            browser.on('disconnected', (err) => {
+                console.log(err)
                 this._log('Browser has disconnected.')
-                this.started = false
-                // this.start(opts)
+                process.exit(0)
             })
             
             const [page] = await browser.pages()
-            await page.setViewport({ width: 1024, height: 768 })
-
+            await page.setViewport({
+                width: 1920 + Math.floor(Math.random() * 100),
+                height: 3000 + Math.floor(Math.random() * 100),
+                deviceScaleFactor: 1,
+                hasTouch: false,
+                isLandscape: false,
+                isMobile: false,
+            })
+            // await page.setUserAgent(UA);
+            await page.setJavaScriptEnabled(true);
+            
             // this.mainTab = page.mainFrame()._id
-            page.setDefaultTimeout(5000)
+            await page.setDefaultTimeout(10000)
             
-            const debugMode = opts[0].debug
-            // Script
-            let mode = 'none'
-            
-            setInterval(() => {
-                this._log('Check antibot...')
-                this.checkReloadBtn()
-            }, 10000)
+            switch(this.mode){
+                case 'bot':
+                    setInterval(() => {
+                        this._log('Check antibot...')
+                        this.checkReloadBtn()
+                    }, 10_000)
 
-            switch(true){
-                case !this.loginMode && !debugMode:
-                    mode = 'AddMeFast Bot'
-                    this._log('Mode: '+mode)
+                    setInterval(() => {
+                        if((new Date() - this.idle) > 60_000) {
+                            this._log("Too much inactivity (120s), restarting process")
+                            process.exit()
+                        }
+                    }, 120_000)
+
+                    this._log('Mode: AddMeFast Bot')
                     await this.signInAddMeFast(page)
                     await this.loop(page, browser)
                 break
 
-                case this.loginMode:
-                    mode = 'Auth Socials'
-                    this._log('Mode: '+ mode)
+                case 'auth':
+                    this._log('Mode: Auth Socials')
                     await this.authSocials(page, opts)
                 break
 
-                case debugMode:
-                    mode = 'Debug'
-                    this._log('Mode: '+ mode)
+                case 'debug':
+                    this._log('Mode: Debug')
                     await this.debugMode(page, opts)
                 break
             }
         } catch(e) {
+            console.log(e)
             this._log('Browser has crashed :/')
+            process.exit(0)
         }    
         
 
@@ -116,19 +150,23 @@ class Bot {
     signInAddMeFast = async (page) => {
         this._log('GoTo Addmefast website')
         await page.goto('https://addmefast.com', {
-            ignoreDefaultArgs: ['--no-sandbox'],
             waitUntil: 'networkidle2',
         })
         this._log('Wait 5sec for cloudflare')
-        await page.waitForTimeout(5000) //cloudflare
+        await page.waitForTimeout(5_000) //cloudflare
         // await page.waitForSelector('.email')
     
-        // Auth ADDMEFAST
-        await page.type('.email', this.AMF_EMAIL, {delay: 50})
-        await page.type('.password', this.AMF_PASSWORD, {delay: 50})
-        await page.waitForTimeout(250)
-        await page.click('[name="login_button"]')
-        this._log('Sign In to AddMeFast')
+        try {
+            // Auth ADDMEFAST
+            await page.type(".email", this.AMF_EMAIL, {delay: 25})
+            await page.type(".password", this.AMF_PASSWORD, {delay: 25})
+            await page.waitForTimeout(250)
+            await page.click("[name='login_button']")
+            this._log("Sign In to AddMeFast")
+        } catch(err) {
+            this._log("Probably already logged")
+        }
+
 
     }
     isActionEmpty = async (page) => {
@@ -147,14 +185,13 @@ class Bot {
     }
     clickAMFBtn = async (page, browser) => {
         this._log('Clicking AMF button')
-        try {
-            await page.waitForSelector("a.single_like_button.btn3-wrap")
-            await page.click('a.single_like_button.btn3-wrap')
-        } catch (e){
-            this._log('AMF button not found')
-            // return this.loop(page, browser)
-        }
 
+        try {
+            await page.click('a.single_like_button.btn3-wrap', {delay: 3000})
+            await popup.evaluate(() =>document.querySelector('a.single_like_button.btn3-wrap').click())
+        } catch (e){
+            this._log('AMF button #1 not found')
+        }
     }
     getPopup = async (browser) => {
         try {
@@ -177,7 +214,8 @@ class Bot {
         }
 
     } 
-    loop = async (page, browser, retry=0) => {
+    loop = async (page, browser) => {
+        this.idle = new Date()
         this._log('Starting loop & go to action page')
 
         const newStratKey = this.randStrategy()
@@ -188,27 +226,22 @@ class Bot {
             await page.goto(newStrat.url, {
                 waitUntil: 'networkidle2'
             })
-        } catch {
+        } catch (err) {
             this._log('Error while loading strategy AMF page')
+            console.log(err)
             this.started = false
         }
 
         this._log('Checking if there is work')
-
         const isEmpty = await this.isActionEmpty(page)
-
         if(isEmpty) {
             this._log('No more points for this action :/')
-            let newRetry = retry + 1
-            return newRetry <= 3 && this.loop(page, browser, newRetry)
-        } else {
-            this._log('Work found, starting loop')
-        }
+            return this.loop(page, browser)
+        } else this._log('Work found, starting loop')
 
-        
         await this.clickAMFBtn(page, browser)
         this._log('Waiting 10s for popup loading')
-        await page.waitForTimeout(10000)
+        await page.waitForTimeout(10_000)
 
         const popup = await this.getPopup(browser)
 
@@ -218,28 +251,24 @@ class Bot {
             this._log('Error while executing callback.')
         }    
 
-        this._log('Callback executed, waiting 10s before closing popup')
-        await page.waitForTimeout(10000)
+        this._log('Callback executed, waiting 5s before closing popup')
+        await page.waitForTimeout(5_000)
 
         await this.closePopup(popup)
+        this.idle = new Date()
 
-        if(newStrat?.opts?.confirm_after_close === true){
-            this.clickAMFBtn(page, browser)
-
-        }
+        if(newStrat?.opts?.confirm_after_close === true) this.clickAMFBtn(page, browser)
 
         // await this.addPoints(page)
 
-        this._log('Loop ended, waiting 5sec')
-        await page.waitForTimeout(5000)
-
+        this._log('Loop ended, waiting 30sec')
+        await page.waitForTimeout(30_000)
         this.loop(page, browser)
     }
     checkReloadBtn = async (page) => {
         try {
             await page.evaluate(() => {
-                const ELEMENT = 'input[name="reload"]'
-                const btn = document.querySelector(ELEMENT)
+                const btn = document.querySelector(".reload-button")
                 if(btn) {
                     btn.click()
                     this._log('Reload Btn clicked !')
@@ -250,14 +279,14 @@ class Bot {
         }
     }
     addPoints = async (page) => {
-        page.setDefaultTimeout(10000)
+        page.setDefaultTimeout(10_000)
         let promises = [
             page.waitForSelector('.success_like'),
             page.waitForSelector('.error_like')
         ]
 
         let result = await racePromises(promises)
-        page.setDefaultTimeout(5000)
+        page.setDefaultTimeout(5_000)
 
         if(result === 0){
             const element = await page.$('.success_like')
@@ -275,38 +304,123 @@ class Bot {
 
     }
     authSocials = async (page, opts) => {
-        const elements = opts[1][opts[0]]
-        if(elements){
-            await page.goto(elements.url, {
+        // #"FbLikePage","FbPostLike","ScLikes","ScFollow","YtLikes","YtViews"
+
+        const providers = [
+            {provider: "facebook", strategies: ["FbLikePage", "FbPostLike"], url: "https://www.facebook.com/?sk=lf"},
+            {provider: "gmail", strategies: ["YtLikes", "YtViews"], url: "https://accounts.google.com/"},
+            {provider: "soundcloud", strategies: ["ScLikes", "ScFollow"], url: ""},
+            {provider: "reddit", strategies: ["RedditUpvote"], url: "https://www.reddit.com/login/"}
+        ]
+        const enabled = JSON.parse(process.env.ONLY_STRATEGIES)
+        const needAuth = {
+            facebook: false,
+            gmail: false,
+            reddit: false,
+            soundcloud: false
+        }
+        for(let strategy of enabled) {
+            const {provider} = providers.find(e => e.strategies.includes(strategy)) || {provider: false, url: false}
+            if(!provider) continue
+            needAuth[provider] = true
+        }
+
+
+        for(let provider in needAuth) {
+            if(needAuth[provider] === false) continue
+
+            this._log("Auth for:"+provider)
+            const {url} = providers.find(e => e.provider === provider)
+            await page.goto(url, {
                 waitUntil: 'networkidle2',
             })
-            await page.waitForTimeout(1000)
+            
+            switch(provider){
+                case "facebook":
+                    try {
+                        await page.waitForSelector("#ssrb_top_nav_start", {delay: 1_000})
+                        this._log('Already logged')
+                        continue
+                    } catch (e) { 
+                        console.log('error already logged', e)
+                    }
 
-            try {
-                await page.type('#email', elements.accounts[0].email, {delay: 50})
-                await page.type('#pass', elements.accounts[0].password, {delay: 50})
+                    try { 
+                        await page.click("button[data-cookiebanner='accept_button']")
+                    } catch {
+                        this._log("Cookie banner not found, continue")
+                    }
 
-                await page.waitForTimeout(250)
-                await page.click('button[name="login"]')
-                await page.waitForTimeout(2000)
+                    await page.type('#email', process.env.FACEBOOK_EMAIL, {delay: 25})
+                    await page.type('#pass', process.env.FACEBOOK_PASSWORD, {delay: 25})
 
-                try {
-                    await page.waitForSelector("#ssrb_top_nav_start")
-                    this._log('selector found ! you are logged !')
-                } catch (e) {
-                    this._log('error while logging', e)
-                }
-            } catch (e){
-                this._log('inputs not found, probably already logged')
+                    await page.click("button[name='login']")
+                    await page.waitForTimeout(10_000)
+                break
+
+                case "gmail":
+                    try {
+                        await page.waitForSelector("a[href*='https://accounts.google.com/SignOutOptions?'", {delay: 1_000})
+                        this._log("Already logged")
+                        continue
+                    } catch (e) { 
+                        console.log('error already logged', e)
+                    }
+                    await page.waitForTimeout(500)
+
+                    try {
+                        await page.click(`div[data-identifier='${process.env.GMAIL_EMAIL}']`, {delay: 1_000})
+                        this._log("Prelogged")
+                        await page.waitForTimeout(3_000)
+
+                        await page.type("input[type='password'", process.env.GMAIL_PASSWORD, {delay: 25})
+                        await page.click("#passwordNext")
+                        await page.waitForTimeout(3_000)
+                        continue
+                    } catch(e) {
+                        console.log('error prelogged', e)
+                     }
+
+
+                    this._log('Not logged')
+
+                    await page.type("input[type='email'", process.env.GMAIL_EMAIL, {delay: 25})
+                    await page.click("#identifierNext")
+                    await page.waitForTimeout(3_000)
+
+                    await page.type("input[type='password'", process.env.GMAIL_PASSWORD, {delay: 25})
+                    await page.click("#passwordNext")
+                    await page.waitForTimeout(3_000)
+                break
+
+                case "reddit":
+                    // try {
+                    //     await page.waitForSelector("#ssrb_top_nav_start", {delay: 1000})
+                    //     this._log('Already logged')
+                    //     continue
+                    // } catch (e) { 
+                    //     console.log('error already logged', e)
+                    // }
+
+                    await page.type('#loginUsername', process.env.REDDIT_USER, {delay: 25})
+                    await page.type('#loginPassword', process.env.REDDIT_PASSWORD, {delay: 25})
+
+                    await page.click("button[type='submit']")
+                    await page.waitForTimeout(10_000)
+                break
             }
+
+
+            
         }
+        // process.exit(0)
     }
     debugMode = async (page, opts) => {
         await page.goto('https://www.youtube.com/watch?v=WGIJLXUKI5U', {
             ignoreDefaultArgs: ['--no-sandbox'],
             waitUntil: 'networkidle2',
         })
-        await page.waitForTimeout(2500)
+        await page.waitForTimeout(2_500)
 
 
         // let select = await page.waitForSelector(ELEMENT)
