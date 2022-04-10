@@ -1,3 +1,4 @@
 addmefast
 node_modules
 .env
+yarn-error.log

@@ -672,6 +672,11 @@ tldts-experimental@^5.6.21:
   dependencies:
     tldts-core "^5.7.36"
 
+tor-control-promise@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/tor-control-promise/-/tor-control-promise-1.0.4.tgz#d500abe0d8ad9114804ac9f1d553fa8135258798"
+  integrity sha512-l9CMpJxXmxSBESO9DIkFjwBJaVFjP6PKlZKbK2fFEQsZevughgCQA4Ocmi0uQzgj6ULzGS3yvd8WiV2eYJirXA==
+
 tr46@~0.0.3:
   version "0.0.3"
   resolved "https://registry.yarnpkg.com/tr46/-/tr46-0.0.3.tgz#8184fd347dac9cdc185992f3a6622e14b9d9ab6a"

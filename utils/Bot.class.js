@@ -1,6 +1,6 @@
-// puppeteer-extra is a drop-in replacement for puppeteer,
-// it augments the installed puppeteer with plugin functionality.
-// Any number of plugins can be added through `puppeteer.use()`
+
+
+
 const puppeteer = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
@@ -12,61 +12,57 @@ const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
 // const UA = USER_AGENT;
 
 const Strategies = require('../strategies')
+const AMF_URL = "https://addmefast.com"
 
 class Bot {
     constructor(OPTS=null){
         this.mode = OPTS?.mode || 'auth'
-        this.started = false
         this.incognito = OPTS?.incognito || false
         this.idle = false
+        this.proxy = false
+        this.maxInactivity = process.env.MAX_INACTIVITY || 60
+        this.strategies = JSON.parse(process.env.STRATEGIES) || null
+        this.currentStrategy = null
 
-        if(this.mode === "bot"){
-            if(!OPTS?.AMF_EMAIL || !OPTS?.AMF_PASSWORD) throw new Error('You should set your AddMeFast credentials first')
-            this.AMF_EMAIL = OPTS.AMF_EMAIL
-            this.AMF_PASSWORD = OPTS.AMF_PASSWORD
-    
-            this.onlyStrat = JSON.parse(process.env.ONLY_STRATEGIES) || null
-            this.disabledStrat = OPTS?.disabledStrat || null
-    
-            if(this.onlyStrat && this.disabledStrat){
-                this.onlyStrat.forEach(e => {
-                    if(this.disabledStrat.includes(e)) throw new Error('You  have a disabledStrat element which is also present in onlyStrat opt')
-                })
-            }
-   
-            // this.totalPts = 0
-            this.currentStrategy = null
-            this.popupTab = null
+        if(process.env?.PROXY_HOST && process.env?.PROXY_PORT) {
+            this.proxy = "http://"+process.env.PROXY_HOST+":"+process.env.PROXY_PORT
+            if(process.env?.PROXY_USER && process.env?.PROXY_PASSWORD) this.proxy = process.env?.PROXY_USER+":"+process.env?.PROXY_PASSWORD+"@"+this.proxy
+            if(process.env?.PROXY_PROTOCOL) this.proxy = this.proxy.replace("http", process.env?.PROXY_PROTOCOL)
         }
 
+        if(!process.env?.AMF_EMAIL || !process.env?.AMF_PASSWORD) throw new Error('You should set your AddMeFast credentials first')
+    
+        console.table({
+            mode: this.mode,
+            proxy: this.proxy,
+            strategies: this.strategies.join(', '),
+            maxInactivity: this.maxInactivity
+        })
         this.puppeteer = puppeteer
         this.puppeteer.use(StealthPlugin())
         this.puppeteer.use(AdblockerPlugin({ blockTrackers: true }))
 
     }
-    randStrategy = () => {
+    getStrategy = () => {
         let arrStrategies = []
         for(let strategy in Strategies){
             arrStrategies.push(strategy)
         }
     
-        let newStrat = arrStrategies[Math.floor(Math.random() * arrStrategies.length)]
+        const newStrat = arrStrategies[Math.floor(Math.random() * arrStrategies.length)]
 
-        let onlyStrat = this.onlyStrat !== null && !this.onlyStrat.includes(newStrat)
-        let disabledStrat = this.disabledStrat !== null && this.disabledStrat.includes(newStrat)
+        let enabled = this.strategies !== null && !this.strategies.includes(newStrat)
         let sameStrat = newStrat === this.currentStrategy
 
-        if(onlyStrat || disabledStrat || sameStrat) return this.randStrategy(Strategies)
+        if(enabled || sameStrat) return this.getStrategy(Strategies)
 
         this.currentStrategy = newStrat
         return newStrat
-
     }
-    start = async (...opts) => {
-        this.started = true
+    start = async (...config) => {
         this.idle = new Date()
         try { 
-            let args = { 
+            const opts = { 
                 userDataDir: "./addmefast",
                 headless: false,
                 args: [
@@ -81,9 +77,23 @@ class Bot {
                 ignoreHTTPSErrors: true, 
                 dumpio: false
             }
-            if(this.incognito) args.args.push("--incognito")
-            if(this.proxy) args.args.push(`--proxy-server=${PROXY_HOST}:${PROXY_PORT}`)
-            let browser = await this.puppeteer.launch(args)
+            if(this.incognito) opts.args.push("--incognito")
+            if(this.proxy) opts.args.push(`--proxy-server=${this.proxy}`)
+
+            // If it's Tor node, renew IP
+            if(String(process.env?.PROXY_TOR) === "true") {
+                const tor_control = require('tor-control-promise');
+                const tor = new tor_control({
+                    host: process.env.PROXY_HOST,
+                    port: process.env.PROXY_PORT,
+                    password: process.env.TOR_PASSWORD,
+                });
+
+                await tor.connect()
+                await tor.signalNewnym()
+            }
+    
+            const browser = await this.puppeteer.launch(opts)
 
             browser.on('disconnected', (err) => {
                 console.log(err)
@@ -101,10 +111,9 @@ class Bot {
                 isMobile: false,
             })
             // await page.setUserAgent(UA);
-            await page.setJavaScriptEnabled(true);
-            
-            await page.setDefaultTimeout(10000)
-            
+            await page.setJavaScriptEnabled(true)
+            await page.setDefaultTimeout(30_000)
+
             switch(this.mode){
                 case 'bot':
                     setInterval(() => {
@@ -114,25 +123,27 @@ class Bot {
 
                     setInterval(() => {
                         this._log("Check inactivity...")
-                        if((new Date() - this.idle) > 60_000) {
-                            this._log("Too much inactivity (120s), restarting process")
+                        if((new Date() - this.idle) > this.maxInactivity*1000) {
+                            this._log(`Too much inactivity (${this.maxInactivity}s), restarting process`)
                             process.exit()
                         }
                     }, 120_000)
 
-                    this._log('Mode: AddMeFast Bot')
                     await this.signInAddMeFast(page)
-                    await this.loop(page, browser)
+                    await this.loop(page, browser, config)
                 break
 
                 case 'auth':
-                    this._log('Mode: Auth Socials')
-                    await this.authSocials(page, opts)
+                default:
+                    await this.authSocials(page, config)
                 break
 
                 case 'debug':
-                    this._log('Mode: Debug')
-                    await this.debugMode(page, opts)
+                    await this.debugMode(page, config)
+                break
+
+                case 'check-ip':             
+                    await page.goto("https://whatismyipaddress.com/fr/mon-ip")
                 break
             }
         } catch(e) {
@@ -145,25 +156,35 @@ class Bot {
     }
     signInAddMeFast = async (page) => {
         this._log('GoTo Addmefast website')
-        await page.goto('https://addmefast.com', {
+        await page.goto(AMF_URL, {
             waitUntil: 'networkidle2',
         })
-        this._log('Wait 5sec for cloudflare')
-        await page.waitForTimeout(5_000) //cloudflare
-        // await page.waitForSelector('.email')
-    
+        
+        this._log('Wait 20sec for cloudflare & complete loading')
+        await page.waitForTimeout(20_000) //cloudflare
+
+        // Auth AddMeFast
         try {
-            // Auth ADDMEFAST
             await page.type(".email", this.AMF_EMAIL, {delay: 25})
             await page.type(".password", this.AMF_PASSWORD, {delay: 25})
             await page.waitForTimeout(250)
             await page.click("[name='login_button']")
             this._log("Sign In to AddMeFast")
+            await page.waitForNavigation({
+                waitUntil: 'networkidle2',
+            })
         } catch(err) {
-            this._log("Probably already logged")
+            this._log("Probably already logged, checking")
         }
 
-
+        // Check AddMeFast auth
+        try {
+            this._log("Account logged")
+            await page.waitForSelector("a[href*='/login/logout']")
+        } catch (err) {
+            this._log("Error, not logged")
+            return this.signInAddMeFast()
+        }
     }
     isActionEmpty = async (page) => {
         const POINTS = /get ([0-9]+) points/i
@@ -192,9 +213,7 @@ class Bot {
     getPopup = async (browser) => {
         try {
             const pages = await browser.pages()
-            const popup = pages[pages.length - 1]
-            popup.setDefaultTimeout(5000)
-    
+            const popup = pages[pages.length - 1]    
             return popup
         } catch (e){
             this._log('Error: no popup found')
@@ -210,23 +229,23 @@ class Bot {
         }
 
     } 
-    loop = async (page, browser) => {
+    loop = async (page, browser, config) => {
+        
         this.idle = new Date()
         this._log('Starting loop & go to action page')
 
-        const newStratKey = this.randStrategy()
-        this._log('Strategy: '+ newStratKey)
+        const strategyKey = this.getStrategy()
+        this._log('Strategy: '+ strategyKey)
 
-        const newStrat = Strategies[newStratKey]
+        const strategy = Strategies[strategyKey]
         try {
-            await page.goto(newStrat.url, {
+            await page.goto(strategy.url, {
                 waitUntil: 'networkidle2'
             })
         } catch (err) {
-            console.log('CODE', err.message)
+            console.log('Error:', err.message)
             this._log('Error while loading strategy AMF page')
             process.exit(0)
-            this.started = false
         }
 
         this._log('Checking if there is work')
@@ -237,26 +256,27 @@ class Bot {
         } else this._log('Work found, starting loop')
 
         await this.clickAMFBtn(page, browser)
+        await page.waitForNavigation({
+            waitUntil: 'networkidle2',
+        })
         this._log('Waiting 10s for popup loading')
         await page.waitForTimeout(10_000)
 
         const popup = await this.getPopup(browser)
 
         try {
-            await newStrat.callback(popup, this, page)
+            await strategy.callback(popup, this, page)
         } catch(e){
             this._log('Error while executing callback.')
         }    
 
-        this._log('Callback executed, waiting 5s before closing popup')
-        await page.waitForTimeout(5_000)
+        this._log('Callback executed, waiting 10s before closing popup')
+        await page.waitForTimeout(10_000)
 
         await this.closePopup(popup)
         this.idle = new Date()
 
-        if(newStrat?.opts?.confirm_after_close === true) this.clickAMFBtn(page, browser)
-
-        // await this.addPoints(page)
+        if(strategy?.opts?.confirm_after_close) this.clickAMFBtn(page, browser)
 
         this._log('Loop ended, waiting 10sec')
         await page.waitForTimeout(10_000)
@@ -275,41 +295,8 @@ class Bot {
             this._log('No antibot detected')
         }
     }
-    // addPoints = async (page) => {
-    //     page.setDefaultTimeout(10_000)
-    //     let promises = [
-    //         page.waitForSelector('.success_like'),
-    //         page.waitForSelector('.error_like')
-    //     ]
-
-    //     let result = await racePromises(promises)
-    //     page.setDefaultTimeout(5_000)
-
-    //     if(result === 0){
-    //         const element = await page.$('.success_like')
-    //         const value = await page.evaluate(el => el.textContent, element)
-
-    //         const POINTS = /([0-9]+) points/i
-    //         const points = value.match(POINTS)
-            
-    //         this.totalPts += parseInt(points[1])
-    //         this._log('Loop done ! +'+points[1]+'pts - Total: '+this.totalPts+'pts')
-    //     }
-    //     else {
-    //         this._log('Error ! No points added :/')
-    //     }
-
-    // }
-    authSocials = async (page, opts) => {
-        // #"FbLikePage","FbPostLike","ScLikes","ScFollow","YtLikes","YtViews"
-
-        const providers = [
-            {provider: "facebook", strategies: ["FbLikePage", "FbPostLike"], url: "https://www.facebook.com/?sk=lf"},
-            {provider: "gmail", strategies: ["YtLikes", "YtViews"], url: "https://accounts.google.com/"},
-            {provider: "soundcloud", strategies: ["ScLikes", "ScFollow"], url: ""},
-            {provider: "reddit", strategies: ["RedditUpvote"], url: "https://www.reddit.com/login/"}
-        ]
-        const enabled = JSON.parse(process.env.ONLY_STRATEGIES)
+    authSocials = async (page, config) => {
+        const enabled = JSON.parse(process.env.STRATEGIES)
         const needAuth = {
             facebook: false,
             gmail: false,
@@ -317,7 +304,7 @@ class Bot {
             soundcloud: false
         }
         for(let strategy of enabled) {
-            const {provider} = providers.find(e => e.strategies.includes(strategy)) || {provider: false, url: false}
+            const {provider} = Strategies.providers.find(e => e.strategies.includes(strategy)) || {provider: false, url: false}
             if(!provider) continue
             needAuth[provider] = true
         }
@@ -327,7 +314,7 @@ class Bot {
             if(needAuth[provider] === false) continue
 
             this._log("Auth for:"+provider)
-            const {url} = providers.find(e => e.provider === provider)
+            const {url} = Strategies.providers.find(e => e.provider === provider)
             await page.goto(url, {
                 waitUntil: 'networkidle2',
             })
@@ -410,28 +397,13 @@ class Bot {
 
             
         }
-        // process.exit(0)
+        process.exit(0)
     }
     debugMode = async (page, opts) => {
-        await page.goto('https://www.youtube.com/watch?v=WGIJLXUKI5U', {
+        await page.goto(AMF_URL, {
             ignoreDefaultArgs: ['--no-sandbox'],
             waitUntil: 'networkidle2',
         })
-        await page.waitForTimeout(2_500)
-
-
-        // let select = await page.waitForSelector(ELEMENT)
-        await page.evaluate(() => {
-            const ELEMENT = "ytd-toggle-button-renderer.style-scope.ytd-menu-renderer.force-icon-button.style-text button#button > yt-icon" // Like video
-
-            document.querySelectorAll(ELEMENT)[2].click()
-        })
-    
-        // Auth ADDMEFAST
-        // await page.type('.email', this.AMF_EMAIL, {delay: 50})
-        // await page.type('.password', this.AMF_PASSWORD, {delay: 50})
-        // await page.waitForTimeout(250)
-        // await page.click('[name="login_button"]')
     }
     waitAndClick = async (selector, page) => {
         await page.evaluate((selector) => document.querySelector(selector).click(), selector);

@@ -1,20 +1,27 @@
-const FbLikePage = require('./FbLikePage')
+const FbPageLike = require('./FbPageLike')
 const FbPostLike = require('./FbPostLike')
 const RedditUpvote = require('./RedditUpvote')
 const ScFollow = require('./ScFollow')
-const ScLikes = require('./ScLikes')
-const YtLikes = require('./YtLikes')
-const YtViews = require('./YtViews')
+const ScLike = require('./ScLike')
+const YtLike = require('./YtLike')
+const YtView = require('./YtView')
 const CmcWatchlist = require('./CmcWatchlist')
 
+const providers = [
+    {provider: "facebook", strategies: ["FbPageLike", "FbPostLike"], url: "https://www.facebook.com/?sk=lf"},
+    {provider: "gmail", strategies: ["YtLike", "YtView"], url: "https://accounts.google.com/"},
+    {provider: "soundcloud", strategies: ["ScLike", "ScFollow"], url: ""},
+    {provider: "reddit", strategies: ["RedditUpvote"], url: "https://www.reddit.com/login/"}
+]
 
 module.exports = {
-    FbLikePage,
+    FbPageLike,
     FbPostLike,
     RedditUpvote,
     ScFollow,
-    ScLikes,
-    YtLikes,
-    YtViews,
-    CmcWatchlist
+    ScLike,
+    YtLike,
+    YtView,
+    CmcWatchlist,
+    providers
 }

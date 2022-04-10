@@ -1,22 +1,14 @@
 require('dotenv').config()
 
+const [exec, file, MODE] = process.argv
+const allowedModes = ["bot", "auth", "debug"]
+
+if(MODE && !allowedModes.includes(MODE)) throw new Error("Selected mode is not handled yet: "+MODE)
+const mode = MODE || 'bot'
+
 const Bot = require('./utils/Bot.class')
-const opts = {
-    AMF_EMAIL: process.env.AMF_EMAIL,
-    AMF_PASSWORD: process.env.AMF_PASSWORD,
-    mode: "bot"
-    // onlyStrat: ['ScLikes'],
-    // disabledStrat: ['ScLikes']
-}
-const bot = new Bot(opts)
+const bot = new Bot({
+    mode
+})
 
-const startBot = () => {
-    try {
-        bot.start({debug:false})
-    } catch(e){
-        console.log('ERREUR: ', e)
-    }
-    
-}
-
-startBot()
+bot.start()
