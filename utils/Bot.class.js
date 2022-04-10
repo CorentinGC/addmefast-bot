@@ -5,11 +5,10 @@ const puppeteer = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
 
+// TODO: Actually detected as bot once user-agent changed
 // const UserAgent = require("user-agents")
 // const {userAgent} = new UserAgent({deviceCategory: 'desktop'});
-
 // const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36';
-
 // const UA = USER_AGENT;
 
 const Strategies = require('../strategies')
@@ -35,17 +34,13 @@ class Bot {
                 })
             }
    
-            this.totalPts = 0
-            // this.mainTab = null
+            // this.totalPts = 0
             this.currentStrategy = null
             this.popupTab = null
         }
 
-
         this.puppeteer = puppeteer
-        // Add stealth plugin and use defaults (all tricks to hide puppeteer usage)
         this.puppeteer.use(StealthPlugin())
-        // Add adblocker plugin to block all ads and trackers (saves bandwidth)
         this.puppeteer.use(AdblockerPlugin({ blockTrackers: true }))
 
     }
@@ -87,6 +82,7 @@ class Bot {
                 dumpio: false
             }
             if(this.incognito) args.args.push("--incognito")
+            if(this.proxy) args.args.push(`--proxy-server=${PROXY_HOST}:${PROXY_PORT}`)
             let browser = await this.puppeteer.launch(args)
 
             browser.on('disconnected', (err) => {
@@ -107,7 +103,6 @@ class Bot {
             // await page.setUserAgent(UA);
             await page.setJavaScriptEnabled(true);
             
-            // this.mainTab = page.mainFrame()._id
             await page.setDefaultTimeout(10000)
             
             switch(this.mode){
@@ -118,6 +113,7 @@ class Bot {
                     }, 10_000)
 
                     setInterval(() => {
+                        this._log("Check inactivity...")
                         if((new Date() - this.idle) > 60_000) {
                             this._log("Too much inactivity (120s), restarting process")
                             process.exit()
@@ -227,8 +223,9 @@ class Bot {
                 waitUntil: 'networkidle2'
             })
         } catch (err) {
+            console.log('CODE', err.message)
             this._log('Error while loading strategy AMF page')
-            console.log(err)
+            process.exit(0)
             this.started = false
         }
 
@@ -261,8 +258,8 @@ class Bot {
 
         // await this.addPoints(page)
 
-        this._log('Loop ended, waiting 30sec')
-        await page.waitForTimeout(30_000)
+        this._log('Loop ended, waiting 10sec')
+        await page.waitForTimeout(10_000)
         this.loop(page, browser)
     }
     checkReloadBtn = async (page) => {
@@ -278,31 +275,31 @@ class Bot {
             this._log('No antibot detected')
         }
     }
-    addPoints = async (page) => {
-        page.setDefaultTimeout(10_000)
-        let promises = [
-            page.waitForSelector('.success_like'),
-            page.waitForSelector('.error_like')
-        ]
+    // addPoints = async (page) => {
+    //     page.setDefaultTimeout(10_000)
+    //     let promises = [
+    //         page.waitForSelector('.success_like'),
+    //         page.waitForSelector('.error_like')
+    //     ]
 
-        let result = await racePromises(promises)
-        page.setDefaultTimeout(5_000)
+    //     let result = await racePromises(promises)
+    //     page.setDefaultTimeout(5_000)
 
-        if(result === 0){
-            const element = await page.$('.success_like')
-            const value = await page.evaluate(el => el.textContent, element)
+    //     if(result === 0){
+    //         const element = await page.$('.success_like')
+    //         const value = await page.evaluate(el => el.textContent, element)
 
-            const POINTS = /([0-9]+) points/i
-            const points = value.match(POINTS)
+    //         const POINTS = /([0-9]+) points/i
+    //         const points = value.match(POINTS)
             
-            this.totalPts += parseInt(points[1])
-            this._log('Loop done ! +'+points[1]+'pts - Total: '+this.totalPts+'pts')
-        }
-        else {
-            this._log('Error ! No points added :/')
-        }
+    //         this.totalPts += parseInt(points[1])
+    //         this._log('Loop done ! +'+points[1]+'pts - Total: '+this.totalPts+'pts')
+    //     }
+    //     else {
+    //         this._log('Error ! No points added :/')
+    //     }
 
-    }
+    // }
     authSocials = async (page, opts) => {
         // #"FbLikePage","FbPostLike","ScLikes","ScFollow","YtLikes","YtViews"
 
