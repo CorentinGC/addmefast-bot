@@ -12,9 +12,11 @@
     "tor-control-promise": "^1.0.4"
   },
   "scripts": {
-    "prestart": "node index.js auth",
     "start": "node index.js",
-    "start:noauth": "node index.js",
-    "auth": "node index.js auth"
+    "prestart:auth": "node index.js auth",
+    "start:auth": "node index.js",
+    "auth": "node index.js auth",
+    "debug": "node index.js debug",
+    "check-ip": "node index.js check-ip"
   }
 }

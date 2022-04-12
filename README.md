@@ -50,3 +50,12 @@
 `SC_PASSWORD` | Soundcloud password
 `TWITTER_EMAIL` | Twitter email (if different from gmail account)
 `TWITTER_PASSWORD` | Twitter password (if different from gmail account)
+
+## Commands
+|Key|Description|
+|---|---|
+`start`| Run the bot
+`auth` | Run auto socials auth
+`start:auth` |  Run auto socials auth then run the botaccount)
+`debug` | Open navigator to AMF homepage
+`check-ip` | Open navigator to whatismyipaddress.com to check current IP
