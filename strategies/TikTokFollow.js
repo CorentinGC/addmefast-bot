@@ -1,5 +1,5 @@
 const TikTokFollow = async (popup) => {
-    const ELEMENT = "button[data-e2e='follow-button']"
+    const ELEMENT = "[data-e2e='follow-button']"
     await popup.waitForSelector(ELEMENT)
     await popup.click(ELEMENT)
 }

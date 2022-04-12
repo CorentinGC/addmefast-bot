@@ -96,7 +96,6 @@ class Bot {
             this.proxy = proxy.type+"://"+proxy.ipPort
         }
 
-        console.log(this.proxy)
         this.idle = new Date()
         try { 
             const opts = { 
@@ -134,11 +133,10 @@ class Bot {
                 process.exit(0)
             })
             
-
-            // await page.setDefaultTimeout(30_000)
-
-                
             const [page] = await browser.pages()
+            // await page.setDefaultTimeout(30_000)
+            // await page.setUserAgent(UA);
+            await page.setJavaScriptEnabled(true)
             await page.setViewport({
                 width: 1920 + Math.floor(Math.random() * 100),
                 height: 3000 + Math.floor(Math.random() * 100),
@@ -148,8 +146,6 @@ class Bot {
                 isMobile: false,
             })
             
-            // await page.setUserAgent(UA);
-            await page.setJavaScriptEnabled(true)
 
             if(process.env?.PROXY_USER && process.env?.PROXY_PASSWORD) {
                 console.log("authenticate")
@@ -200,21 +196,18 @@ class Bot {
     }
     signInAddMeFast = async (page) => {
         this._log("GoTo Addmefast website")
-        await page.goto(AMF_URL, {
-            waitUntil: "networkidle2",
-        })
+        await page.goto(AMF_URL, {waitUntil: "networkidle0"})
         
         this._log(`Wait ${CLOUDFLARE_TIMEOUT}sec for cloudflare`)
         await page.waitForTimeout(CLOUDFLARE_TIMEOUT*1000)
 
         // Auth AddMeFast
         try {
-            await page.type(".email", process.env.AMF_EMAIL, {delay: 25}, {timeout: 2000})
-            await page.type(".password", process.env.AMF_PASSWORD, {delay: 25})
+            await page.type(".email", process.env.AMF_EMAIL, {delay: 25}, {timeout: 1_000})
+            await page.type(".password", process.env.AMF_PASSWORD, {delay: 25}, {timeout: 1_000})
             await page.waitForTimeout(250)
             await page.click("[name='login_button']")
             this._log("Sign In to AddMeFast")
-            await page.waitForNavigation({waitUntil: "networkidle2"})
         } catch(err) {
             this._log("Probably already logged, checking")
                                 
@@ -235,7 +228,7 @@ class Bot {
         const POINTS = /get ([0-9]+) points/i
 
         try {
-            const element = await page.waitForSelector(".likedPagesSingle > center > b", {timeout: 2000})
+            const element = await page.waitForSelector(".likedPagesSingle > center > b", {timeout: 2_000})
             const value = await page.evaluate(el => el.textContent, element)
             const state = value.match(POINTS)
     
@@ -249,8 +242,9 @@ class Bot {
         this._log("Clicking AMF button")
 
         try {
-            await page.click("a.single_like_button.btn3-wrap")
-            await popup.evaluate(() =>document.querySelector("a.single_like_button.btn3-wrap").click())
+            const ELEMENT = "a.single_like_button.btn3-wrap"
+            await page.click(ELEMENT)
+            await popup.evaluate(() => document.querySelector(ELEMENT).click())
         } catch (e){
             this._log("AMF button #1 not found")
         }
@@ -437,7 +431,8 @@ class Bot {
         process.exit(0)
     }
     debugMode = async (page, opts) => {
-        await page.goto(AMF_URL, {waitUntil: "networkidle2"})
+        page.goto(AMF_URL)
+    
     }
     waitAndClick = async (selector, page) => page.evaluate((selector) => document.querySelector(selector).click(), selector)
 

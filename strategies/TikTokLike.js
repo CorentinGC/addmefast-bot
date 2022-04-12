@@ -1,5 +1,5 @@
 const TikTokLike = async (popup) => {
-    const ELEMENT = "button[data-e2e='like-icon']"
+    const ELEMENT = "[data-e2e='like-icon']"
     await popup.waitForSelector(ELEMENT)
     await popup.click(ELEMENT)
 }
