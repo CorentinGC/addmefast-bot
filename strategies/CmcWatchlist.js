@@ -1,9 +1,10 @@
 const CmcWatchlist = async (popup) => {
-    await popup.waitForSelector(".nameHeader>span")
-    await popup.click(".nameHeader>span") // Follow user
+    const ELEMENT = ".nameHeader>span"
+    await popup.waitForSelector(ELEMENT)
+    await popup.click(ELEMENT) // Follow user
 }
 module.exports = {
-    url: 'https://addmefast.com/free_points/coinmarketcap_watchlist',
+    url: "https://addmefast.com/free_points/coinmarketcap_watchlist",
     callback: CmcWatchlist,
     opts: {
         confirm_after_close: true

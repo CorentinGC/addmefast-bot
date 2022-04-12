@@ -16,15 +16,19 @@
 - Soundcloud like - `ScLike`
 - Soundcloud subscribe - `ScSubscribe`
 - Reddit upvote - `RedditUpvote`
+- Reddit follow - `RedditFollow`
 - CoinMarketCap watchlist - `CmcWatchlist`
-
-Strategies env (`STRATEGIES`)
+- Twitter like - `TwitterLike`
+- Twitter follow - `TwitterFollow`
+- TikTok like - `TikTokLike`
+- TikTok follow - `TikTokFollow`
 
 ## Bot Configuration
 |Key|Description|Type|Default|Optional|
 |---|---|---|---|---|
 |`AMF_EMAIL` | AddMeFast email  | `string` | `true` | false
 |`AMF_PASSWORD` | AddMeFast password | `string` | `true` | false
+|`CLOUDFLARE_TIMEOUT` | Cloudflare wait delay (startup) | `int` | `15` | false
 |`STRATEGIES` | List of enabled strategies | `array` | `[]` | false
 |`MAX_INACTIVITY` | Time in second before forcerestart the bot | `int` | `60` | true
 |`PROXY_PROTOCOL` | Proxy protocol | `string` | `http`| true
@@ -36,11 +40,13 @@ Strategies env (`STRATEGIES`)
 |`TOR_PASSWORD` | If `PROXY_TOR` enabled define torrc password, for renewing IP | `string` | `null` | true
 
 ## Networks
-|Key|Description|Type|
-|---|---|---|
-`FACEBOOK_EMAIL`| Facebook email | `string`
-`FACEBOOK_PASSWORD` | Facebook password | `string`
-`GMAIL_EMAIL` | Google email | `string`
-`GMAIL_PASSWORD` | Google password | `string`
-`SC_EMAIL` | Soundcloud email | `string`
-`SC_PASSWORD` | Soundcloud password | `string`
+|Key|Description|
+|---|---|
+`FACEBOOK_EMAIL`| Facebook email
+`FACEBOOK_PASSWORD` | Facebook password
+`GMAIL_EMAIL` | Google email
+`GMAIL_PASSWORD` | Google password
+`SC_EMAIL` | Soundcloud email
+`SC_PASSWORD` | Soundcloud password
+`TWITTER_EMAIL` | Twitter email (if different from gmail account)
+`TWITTER_PASSWORD` | Twitter password (if different from gmail account)
