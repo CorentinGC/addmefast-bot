@@ -28,8 +28,9 @@
 |---|---|---|---|---|
 |`AMF_EMAIL` | AddMeFast email  | `string` | `true` | false
 |`AMF_PASSWORD` | AddMeFast password | `string` | `true` | false
-|`CLOUDFLARE_TIMEOUT` | Cloudflare wait delay (startup) | `int` | `15` | false
+|`CLOUDFLARE_TIMEOUT` | Cloudflare wait delay (startup) | `int` | `15` | true
 |`STRATEGIES` | List of enabled strategies | `array` | `[]` | false
+|`CHROME_PATH` | Path of chrome executable (instead of default chromieum) | `string` | `null` | true
 |`MAX_INACTIVITY` | Time in second before forcerestart the bot | `int` | `60` | true
 |`PROXY_PROTOCOL` | Proxy protocol | `string` | `http`| true
 |`PROXY_HOST` | Proxy host | `string \| ip` | `null` | true

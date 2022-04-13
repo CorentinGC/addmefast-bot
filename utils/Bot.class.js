@@ -108,11 +108,12 @@ class Bot {
                     "--disable-dev-shm-usage",
                     "--flag-switches-begin",
                     "--disable-site-isolation-trials",
-                    "--flag-switches-end"
+                    "--flag-switches-end",
                 ],
                 ignoreHTTPSErrors: true, 
                 dumpio: false
             }
+            if(process.env?.CHROME_PATH) opts.executablePath = process.env.CHROME_PATH
             if(this.incognito) opts.args.push("--incognito")
             if(this.proxy) opts.args.push(`--proxy-server=${this.proxy}`)
 
@@ -431,7 +432,25 @@ class Bot {
         process.exit(0)
     }
     debugMode = async (page, opts) => {
-        page.goto(AMF_URL)
+        // await page.goto(AMF_URL)
+        await page.goto("https://tiktok.com")
+
+        const autoScroll = async (delay=30) =>{
+            await page.evaluate(async (delay) => {
+                await new Promise((resolve, reject) => {
+                    var totalHeight = 0;
+                    var distance = 735;
+                    var timer = setInterval(() => {
+                        console.log('interval')
+
+                        window.scrollBy(0, distance);
+                        totalHeight += distance;
+                    }, delay * 1000);
+                });
+            }, delay);
+        }
+
+        await autoScroll(15)
     
     }
     waitAndClick = async (selector, page) => page.evaluate((selector) => document.querySelector(selector).click(), selector)
