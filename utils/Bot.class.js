@@ -432,25 +432,25 @@ class Bot {
         process.exit(0)
     }
     debugMode = async (page, opts) => {
-        // await page.goto(AMF_URL)
-        await page.goto("https://tiktok.com")
+        await page.goto(AMF_URL)
+        // await page.goto("https://tiktok.com")
 
-        const autoScroll = async (delay=30) =>{
-            await page.evaluate(async (delay) => {
-                await new Promise((resolve, reject) => {
-                    var totalHeight = 0;
-                    var distance = 735;
-                    var timer = setInterval(() => {
-                        console.log('interval')
+        // const autoScroll = async (delay=30) =>{
+        //     await page.evaluate(async (delay) => {
+        //         await new Promise((resolve, reject) => {
+        //             var totalHeight = 0;
+        //             var distance = 735;
+        //             var timer = setInterval(() => {
+        //                 console.log('interval')
 
-                        window.scrollBy(0, distance);
-                        totalHeight += distance;
-                    }, delay * 1000);
-                });
-            }, delay);
-        }
+        //                 window.scrollBy(0, distance);
+        //                 totalHeight += distance;
+        //             }, delay * 1000);
+        //         });
+        //     }, delay);
+        // }
 
-        await autoScroll(15)
+        // await autoScroll(15)
     
     }
     waitAndClick = async (selector, page) => page.evaluate((selector) => document.querySelector(selector).click(), selector)

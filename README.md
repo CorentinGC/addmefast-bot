@@ -1,10 +1,15 @@
 # AddMeFast Bot
+*A bot to earn point automaticaly on AddMeFast*
+
+This project is in active development and there might be some bugs, don't hesitate to open an issue if you found one.
 
 ### Setup
 - Copy `.env.example` to `.env`
 - Then fill your AddMeFast credentials (`AMF_EMAIL` and `AMF_PASSWORD`) and add strategies (`STRATEGIES`)
 - Fill associated networks credentials (Facebook, Gmail, Soundcloud)
 - Run `yarn start` to auto login on networks and start bot
+
+The bot will stop on errors, if you want infinite loop you can run it with [`forever`](https://github.com/foreversd/forever)
 
 *You can run `yarn start:noauth` to start without trying to auth on networks*
 
@@ -41,6 +46,7 @@
 |`TOR_PASSWORD` | If `PROXY_TOR` enabled define torrc password, for renewing IP | `string` | `null` | true
 
 ## Networks
+*Actually only facebook, gmail/youtube and reddit accounts are supported on auto-login, if you want to auth on other networks, run the bot with `yarn debug`*
 |Key|Description|
 |---|---|
 `FACEBOOK_EMAIL`| Facebook email
