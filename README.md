@@ -63,6 +63,6 @@ The bot will stop on errors, if you want infinite loop you can run it with [`for
 |---|---|
 `start`| Run the bot
 `auth` | Run auto socials auth
-`start:auth` |  Run auto socials auth then run the botaccount)
+`start:auth` |  Run auto socials auth then run the bot
 `debug` | Open navigator to AMF homepage
 `check-ip` | Open navigator to whatismyipaddress.com to check current IP
