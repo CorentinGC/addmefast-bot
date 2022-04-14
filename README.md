@@ -11,7 +11,7 @@ This project is in active development and there might be some bugs, don't hesita
 
 The bot will stop on errors, if you want infinite loop you can run it with [`forever`](https://github.com/foreversd/forever)
 
-*You can run `yarn start:noauth` to start without trying to auth on networks*
+*You can run `yarn start:auth` to auth on networks before starting the bot*
 
 ### Supported AddMeFast strategies
 - Facebook like post - `FbPostLike`
